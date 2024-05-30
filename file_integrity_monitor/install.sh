@@ -1,25 +1,34 @@
 #!/bin/bash
 
-# Installer les dépendances nécessaires
+# Variables
+REPO_URL="https://github.com/AZKaiiZ/File-Integrity-Monitor/raw/main/file_integrity_monitor"
+INSTALL_DIR="/usr/local/share/file_integrity_monitor"
+
+# Mettre à jour les sources de paquets
+sed -i 's/^deb cdrom/#deb cdrom/' /etc/apt/sources.list
+
+# Mettre à jour la liste des paquets
 apt-get update
-apt-get install -y python3 python3-pip
-pip3 install pyinotify
+
+# Installer les dépendances nécessaires
+apt-get install -y python3 python3-venv
 
 # Créer le répertoire pour le projet
-mkdir -p /usr/local/share/file_integrity_monitor
+mkdir -p $INSTALL_DIR
 
-# Copier les scripts dans /usr/local/share/file_integrity_monitor
-cp hash_utils.py /usr/local/share/file_integrity_monitor/
-cp file_io.py /usr/local/share/file_integrity_monitor/
-cp integrity_checker.py /usr/local/share/file_integrity_monitor/
-cp main.py /usr/local/share/file_integrity_monitor/
-cp README.md /usr/local/share/file_integrity_monitor/
+# Télécharger les fichiers depuis GitHub
+wget -O $INSTALL_DIR/hash_utils.py $REPO_URL/hash_utils.py
+wget -O $INSTALL_DIR/file_io.py $REPO_URL/file_io.py
+wget -O $INSTALL_DIR/integrity_checker.py $REPO_URL/integrity_checker.py
+wget -O $INSTALL_DIR/main.py $REPO_URL/main.py
 
-# Créer des liens symboliques dans /usr/local/bin pour exécuter les scripts depuis n'importe où
-ln -s /usr/local/share/file_integrity_monitor/hash_utils.py /usr/local/bin/hash_utils.py
-ln -s /usr/local/share/file_integrity_monitor/file_io.py /usr/local/bin/file_io.py
-ln -s /usr/local/share/file_integrity_monitor/integrity_checker.py /usr/local/bin/integrity_checker.py
-ln -s /usr/local/share/file_integrity_monitor/main.py /usr/local/bin/main.py
+# Créer un environnement virtuel Python
+python3 -m venv $INSTALL_DIR/venv
+
+# Activer l'environnement virtuel et installer pyinotify via pip
+source $INSTALL_DIR/venv/bin/activate
+pip install pyinotify
+deactivate
 
 # Ajouter un service systemd pour exécuter le script au démarrage
 cat <<EOT > /etc/systemd/system/file_integrity_monitor.service
@@ -27,7 +36,7 @@ cat <<EOT > /etc/systemd/system/file_integrity_monitor.service
 Description=File Integrity Monitor
 
 [Service]
-ExecStart=/usr/bin/python3 /usr/local/share/file_integrity_monitor/main.py /etc/ -o /home/user/hashes.txt
+ExecStart=$INSTALL_DIR/venv/bin/python $INSTALL_DIR/main.py /etc/ -o /home/user/hashes.txt
 Restart=always
 
 [Install]
